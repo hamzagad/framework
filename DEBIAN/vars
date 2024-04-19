@@ -1,0 +1,8 @@
+#!/bin/bash
+
+export packageFriendlyName="Issabel Framework"
+export packageName="issabel-framework"
+export version="VERSION_NUMBER"
+export release="RELEASE_NUMBER"
+export fullVersionName="$version-$release"
+export folderName="$packageName-$fullVersionName"
