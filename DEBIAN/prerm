@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /usr/share/issabel-reports/vars
+. /usr/share/issabel-framework/vars
 
 echo $packageFriendlyName 'Removing ...'
 

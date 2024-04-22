@@ -1,19 +1,339 @@
 #!/bin/bash
+set -e  
 
-. /usr/share/issabel-reports/vars
+apt-get install -y php7.4-mcrypt php7.4-gd php7.4-imap php7.4-soap php7.4-bz2
+apt-get install -y php-tcpdf smarty3
+mv /usr/share/php/smarty3 /usr/share/php/Smarty 
+# dpkg -i php-PHPMailer_5.2.28_all.deb
+apt-get install dbconfig-mysql dbconfig-common javascript-common 
+apt-get install sqlite3 rpm unzip ntp
+echo 'Please Enter mysql root password then press Enter, if there is no password press Enter.'
+mysql -u'root' -p -e"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES ON asteriskrealtime.* TO 'asteriskuser'@'localhost';"
 
-mkdir -p /usr/share/issabel/module_installer/${folderName}/
+wget http://security.debian.org/debian-security/pool/updates/main/s/sqlite/libsqlite0_2.8.17-15+deb10u1_amd64.deb
+wget http://ftp.us.debian.org/debian/pool/main/r/readline/libreadline7_7.0-5_amd64.deb
+wget http://security.debian.org/debian-security/pool/updates/main/s/sqlite/sqlite_2.8.17-15+deb10u1_amd64.deb
+dpkg -i libsqlite0_2.8.17-15+deb10u1_amd64.deb
+dpkg -i libreadline7_7.0-5_amd64.deb
+dpkg -i sqlite_2.8.17-15+deb10u1_amd64.deb
+
+if [ -f /usr/share/issabel-framework/vars ]; then
+    . /usr/share/issabel-framework/vars
+else
+    echo "Required vars file not found."
+    exit 1
+fi
+
+# /usr/share/issabel/module_installer/issabel-framework-5.0.0-1
+pathModule="/usr/share/issabel/module_installer/$folderName"
+mkdir -p ${pathModule}
+#To know the version of Isabel before updating or installing
+preversionFile="${pathModule}/preversion_framework.info"
+: > "${preversionFile}"
+
+if [ "$1" = "upgrade" ]; then
+    dpkg-query -W -f='${Version}' "${packageName}" > "${preversionFile}"
+    # rpm -q --queryformat='%{VERSION}-%{RELEASE}' $packageName > $pathModule/preversion_framework.info
+fi
+
+## ** Step 1: Creation path for the installation ** ##
+# ** /var path ** #
 mkdir -p /var/www/html/libs/
+mkdir -p /var/www/db
+mkdir -p /var/www/backup
+mkdir -p /var/lib/php/session-asterisk
 
-pathSQLiteDB="/var/www/db"
-mkdir -p $pathSQLiteDB
+# ** /usr path ** #
+# mkdir -p /usr/local/bin
+mkdir -p /usr/local/issabel
+# mkdir -p /usr/local/sbin
+# mkdir -p /usr/sbin
+# mkdir -p /usr/bin
+mkdir -p /usr/share/pear/DB
+mkdir -p /usr/share/issabel/privileged
+
+# ** /etc path ** #
+# mkdir -p /etc/cron.d
+# mkdir -p /etc/httpd/conf.d
+# mkdir -p /etc/php.d
+mkdir -p /etc/profile.d
+# mkdir -p /etc/yum.repos.d
+mkdir -p /etc/init.d
+
+# ** Others ** #
+# mkdir -p /usr/share/fonts/truetype
+
+## ** Step 2: Installation of files and folders ** ##
+# ** Installating framework issabel webinterface ** #
+mv /framework/html/ /var/www/
+
+# ** Installating modules issabel webinterface ** #
+chmod 777 /var/www/db/
+chmod 755 /usr/share/issabel/privileged
+
+# Example for Install configuration file if does not override existing configuration
+# [ ! -f /etc/httpd/conf.d/issabel-htaccess.conf ] && install -m 644 -o root -g root /additionals/etc/httpd/conf.d/issabel-htaccess.conf /etc/httpd/conf.d/
+
+# Ensure they are placed correctly and set permissions and ownership
+# install -m 644 -o root -g root /additionals/etc/httpd/conf.d/issabel-htaccess.conf  /etc/httpd/conf.d/issabel-htaccess.conf
+install -m 644 -o root -g root /additionals/etc/httpd/conf.d/issabel-htaccess.conf  /etc/apache2/conf-available/issabel-htaccess.conf
+a2enconf issabel-htaccess.conf
+# install -m 644 -o root -g root /additionals/etc/httpd/conf.d/issabel.conf           /etc/httpd/conf.d/issabel.conf
+install -m 644 -o root -g root /additionals/etc/httpd/conf.d/issabel.conf           /etc/apache2/sites-available/issabel.conf
+# install -m 644 -o root -g root /additionals/etc/php.d/issabel.ini                   /etc/php.d/issabel.ini
+install -m 644 -o root -g root /additionals/etc/php.d/issabel.ini                   /etc/php/7.4/apache2/conf.d/issabel.ini
+# php -d extension=/etc/php/7.4/mods-available/issabel.ini
+comment user and group in file
+# ** Httpd and Php config ** #
+# mv /additionals/etc/httpd/conf.d/issabel-htaccess.conf /etc/httpd/conf.d/
+# mv /additionals/etc/httpd/conf.d/issabel.conf /etc/httpd/conf.d/
+# mv /additionals/etc/php.d/issabel.ini /etc/php.d/
+
+# ** /usr/local/ files ** #
+mv /additionals/usr/local/issabel/sampler.php /usr/local/issabel/
+mv /additionals/usr/local/sbin/motd.sh /usr/local/sbin/
+chmod 755 /usr/local/sbin/motd.sh
+
+# ** crons config ** #
+install -m 644 -o root -g root /additionals/etc/cron.d/issabel.cron /etc/cron.d/issabel.cron
+rm /additionals/etc/cron.d/issabel.cron 
+chmod 644 /etc/cron.d/*
+
+# ** Repos config ** #
+# mv /additionals/etc/yum.repos.d/Issabel.repo /etc/yum.repos.d/
+# mv /additionals/etc/yum.repos.d/Issabel5.repo /etc/yum.repos.d/
+
+# ** sudoers config ** #
+mv /additionals/etc/sudoers /usr/share/issabel/
+
+# ** profile login server info ** #
+install -m 644 -o root -g root /additionals/etc/profile.d/login-info.sh /etc/profile.d/login-info.sh
+rm /additionals/etc/profile.d/login-info.sh
+chmod 755 /etc/profile.d/login-info.sh
+
+# ** /usr/share/ files ** #
+# mv /additionals/usr/share/pear/DB/sqlite3.php /usr/share/pear/DB/
+
+# ** setup ** #
+mv /framework/setup/usr/share/issabel/privileged/* /usr/share/issabel/privileged/
+rm -rf /framework/setup/usr
+# rmdir /framework/setup/usr/share/issabel/privileged/ /framework/setup/usr/share/issabel
+# rmdir /framework/setup/usr/share /framework/setup/usr
+mv /framework/setup/ ${pathModule}/
+mv /framework/menu.xml ${pathModule}/
+
+# ** issabel -* file ** #
+mv /additionals/usr/bin/issabel-menumerge /usr/bin/
+mv /additionals/usr/bin/issabel-menuremove /usr/bin/
+mv /additionals/usr/bin/issabel-dbprocess /usr/bin/
+mv /additionals/usr/bin/compareVersion /usr/bin/
+mv /additionals/usr/bin/search_ami_admin_pwd /usr/bin/
+mv /additionals/usr/bin/issabel-add-yum-exclude /usr/bin/
+mv /additionals/usr/bin/issabel-notification /usr/bin/
+chmod 755 /usr/bin/compareVersion
+chmod 755 /usr/bin/search_ami_admin_pwd
+
+# ** Moving issabel_helper
+mv /additionals/usr/bin/issabel-helper /usr/bin/
+mv /additionals/usr/sbin/issabel-helper /usr/sbin/
+
+# generic-cloexec and close-on-exec.pl files
+mv /additionals/usr/sbin/close-on-exec.pl /usr/sbin/
+mv /additionals/etc/init.d/generic-cloexec /etc/init.d/
+
+#Logrotate
+# mkdir -p /etc/logrotate.d/
+mv /additionals/etc/logrotate.d/* /etc/logrotate.d/
+# Thelogotate files MUST be 0644 (http://bugs.elastix.org/view.php?id=2608)
+chmod 644 /etc/logrotate.d/*
+
+### Ensure and fix ownership and permissions for directories and files
+# Set ownership for asterisk directories
+chown -R asterisk:asterisk /var/www/db
+chown -R asterisk:asterisk /var/www/backup
+
+# Create logs if they do not exist and set ownership
+mkdir -p    /var/log/issabel
+touch /var/log/issabel/audit.log
+touch /var/log/issabel/postfix_stats.log
+chown asterisk:asterisk /var/log/issabel/audit.log
+chown asterisk:asterisk /var/log/issabel/postfix_stats.log
+
+# Set ownership for root directories and files
+chown -R root:root /usr/share/issabel
+chown -R root:root /usr/local/issabel
+chown -R root:root /usr/local/sbin
+chown -R root:root /usr/sbin
+chown -R root:root /usr/bin
+
+# Set specific permissions
+chmod 755 /usr/share/issabel/privileged/*
+chmod 770 /var/lib/php/session-asterisk
+chown -R asterisk:asterisk /var/lib/php/session-asterisk
+
+# Create or touch dummy files for web caching
+touch /var/www/html/cache/.dummy
+touch /var/www/html/templates_c/.dummy
+chown asterisk:asterisk /var/www/html/cache/.dummy
+chown asterisk:asterisk /var/www/html/templates_c/.dummy
+
+chmod 755 /usr/sbin/issabel-*
+chmod 755 /usr/bin/issabel-*
+chown -R asterisk:asterisk /var/www/html 
+
+# Check if the 'asterisk' group already exists
+if ! getent group asterisk > /dev/null; then
+    echo "   0:adding group asterisk..."
+    /usr/sbin/groupadd -r -f asterisk
+else
+    echo "   0:group asterisk already present"
+fi
+
+# At this point the asterisk group must already exist
+if ! getent passwd asterisk > /dev/null; then
+    echo -e "Adding new user asterisk..."
+    # Ensure the 'asterisk' group exists before adding the user
+    if ! getent group asterisk > /dev/null; then
+        /usr/sbin/groupadd -r asterisk
+    fi
+    # Add the user with specified home directory and shell
+    /usr/sbin/useradd -r -g asterisk -c "Asterisk PBX" -s /bin/bash -d /var/lib/asterisk asterisk
+fi
+
+# We do not modify anything, the user creates the asterisk packages
+# /usr/sbin/usermod -c "Asterisk VoIP PBX" -g asterisk -s /bin/bash -d /var/lib/asterisk asterisk
+
+# TODO: POST-INSTALLATION TASK
+#useradd -d /var/ftp -M -s /sbin/nologin ftpuser
+#(echo asterisk2007; sleep 2; echo asterisk2007) | passwd ftpuser
+
+# ** Change content of sudoers ** #
+cat   /usr/share/issabel/sudoers > /etc/sudoers.d/issabel
+rm -f /usr/share/issabel/sudoers
+
+
+# Patch httpd.conf so that User and Group directives in issabel.conf take effect
+# sed --in-place "s,User\sapache,#User apache,g" /etc/httpd/conf/httpd.conf
+# sed --in-place "s,Group\sapache,#Group apache,g" /etc/httpd/conf/httpd.conf
+
+# Patch php.conf to remove the assignment to session.save_path in CentOS 7
+# sed --in-place "s,php_value session.save_path,#php_value session.save_path,g" /etc/httpd/conf.d/php.conf
+
+
+
+# ** Use of issabel-dbprocess ** #
+preversion=`cat $pathModule/preversion_framework.info`
+rm -f $pathModule/preversion_framework.info
+
+# Set random pbxapi key (no pbxapi folder created)
+# RANDKEY=%(date +%s | sha256sum | base64 | head -c 64 ; echo)
+# sed --in-place "s,da893kasdfam43k29akdkfaFFlsdfhj23rasdf,$RANDKEY,g" /var/www/html/pbxapi/index.php
+
+if [ "$1" = "install" ]; then #install
+    # The installer database
+    # issabelversion=`rpm -q --queryformat='%{VERSION}-%{RELEASE}' issabel`
+    # verifyVersion=`echo $issabelversion | grep -oE "^[0-9]+(\.[0-9]+){1,2}-[0-9]+$"`
+    # if [ "$verifyVersion" == "" ]; then
+	issabel-dbprocess "install" "$pathModule/setup/db"
+    # else
+	# issabel-dbprocess "update"  "$pathModule/setup/db" "$verifyVersion"
+    # fi
+    /sbin/service apache2 status > /dev/null 2>&1
+    if [ "$?" == "0" ]; then
+    	echo "Restarting apache..."
+    	/sbin/service apache2 restart > /dev/null 2>&1
+    fi
+elif [ "$1" = "upgrade" ]; then #update
+    issabel-dbprocess "update"  "$pathModule/setup/db" "$preversion"
+    /sbin/service apache2 status > /dev/null 2>&1
+    if [ "$?" == "0" ]; then
+    	# Para versiones menores a 2.2.0-15 se debe reiniciar el apache debido a cambios en issabel.conf
+    	compareVersion "$preversion" "2.2.0-15"
+    	if [ "$?" == "9" ]; then
+        	echo "Restarting apache..."
+        	/sbin/service apache2 restart > /dev/null 2>&1
+    	fi
+    fi
+fi
+
+
+
+# Ami's password is checked if it is in /etc/issabel.conf
+search_ami_admin_pwd
+if [ "$?" == "1" ]; then
+	echo "Restarting amportal..."
+        /usr/sbin/amportal restart > /dev/null 2>&1
+fi
+
+# Update About Version Release
+# Check if something already exists in the database
+if [ "`sqlite3 /var/www/db/settings.db "select count(key) from settings where key='issabel_version_release';"`" = "0" ]; then
+    `sqlite3 /var/www/db/settings.db "insert into settings (key, value) values('issabel_version_release','${fullVersionName}');"`
+else
+    #Update
+    `sqlite3 /var/www/db/settings.db "update settings set value='${fullVersionName}' where key='issabel_version_release';"`
+fi
+
+: '
+# Patch issabel.ini to work around %config(noreplace) in previous versions
+sed --in-place "s,/tmp,/var/lib/php/session-asterisk,g" /etc/php.d/issabel.ini
+if [ "$1" = "install" ]; then #install
+    /sbin/service apache2 status > /dev/null 2>&1
+    if [ "$?" == "0" ]; then
+        echo "Restarting apache..."
+        /sbin/service apache2 restart > /dev/null 2>&1
+    fi
+elif [ "$1" = "upgrade" ]; then #update
+    /sbin/service apache2 status > /dev/null 2>&1
+    if [ "$?" == "0" ]; then
+        # For versions less than 2.4.0-11, Apache must be restarted due to changes in issabel.ini
+        # Regarding the session files, that is why they also have to be relocated
+        compareVersion "$preversion" "2.4.0-11"
+        if [ "$?" == "9" ]; then
+             # Patch issabel.ini, relocate session files to the new path.
+            echo "Session files in the old directory. Starting relocation process..."
+            for file_sess in `ls /tmp/sess_*`
+            do
+              file_name=`basename $file_sess`
+              if [ -f /var/lib/php/session-asterisk/$file_name ]; then
+                rm -rf /var/lib/php/session-asterisk/$file_name
+              fi
+
+              echo "Copying file /tmp/$file_name to /var/lib/php/session-asterisk/$file_name."
+              cp -p /tmp/$file_name /var/lib/php/session-asterisk/
+            done
+
+            echo "Restarting apache..."
+            /sbin/service apache2 restart > /dev/null 2>&1
+        fi
+    fi
+fi
+'
+
+# Merge current menu.xml for userlist custom privileges
+issabel-menumerge $pathModule/menu.xml
+
+# For smarty to update (tpl updates)
+rm -rf /var/www/html/var/templates_c/*
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 chmod -R 755 /modules/
 chmod -R 755 /setup/
 chown -R root:root /modules/
 chown -R root:root /setup/
 
-pathModule="/usr/share/issabel/module_installer/$folderName"
 mv /modules/ /var/www/html/
 mv /setup/paloSantoCDR.class.php      /var/www/html/libs/
 mv /setup/paloSantoTrunk.class.php    /var/www/html/libs/

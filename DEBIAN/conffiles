@@ -1,0 +1,7 @@
+/etc/logrotate.d/issabelAudit.logrotate
+/etc/logrotate.d/issabelEmailStats.logrotate
+/etc/profile.d/login-info.sh
+/etc/cron.d/issabel.cron
+/etc/httpd/conf.d/issabel.conf
+/etc/httpd/conf.d/issabel-htaccess.conf
+/etc/php.d/issabel.ini

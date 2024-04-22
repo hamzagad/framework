@@ -25,6 +25,7 @@ jobs:
           export spec_release=$(grep 'Release:' ${{ env.PACKAGE_NAME }}.spec | awk '{print $2}')
           sed -i "s/VERSION_NUMBER/${spec_version}/g" DEBIAN/vars
           sed -i "s/RELEASE_NUMBER/${spec_release}/g" DEBIAN/vars
+          sed -i "s/PACKAGE_NAME/${{ env.PACKAGE_NAME }}/g" DEBIAN/vars
           echo "full_version=refs/tags/v${spec_version}-${spec_release}" >> $GITHUB_ENV
           rm -rf ${{ env.PACKAGE_NAME }}.spec
           mkdir -p .debpkg/usr/share/${{ env.PACKAGE_NAME }}
@@ -41,7 +42,7 @@ jobs:
           version: ${{ env.full_version }}
           arch: 'all'
           # depends: 'fonts-open-sans, fonts-liberation, php-jpgraph, issabel-framework (>= 5.0.0-1)'
-          depends: 'fonts-open-sans, fonts-liberation, php-jpgraph'
+          depends: 'fonts-open-sans, fonts-liberation, php-jpgraph, smarty3, php-tcpdf, php-PHPMailer, rpm, procps, sqlite3, coreutils, php7.4-mysql'
           desc: 'Main GUI Framework for Issabel'
 
       - name: Upload Debian package as artifact
